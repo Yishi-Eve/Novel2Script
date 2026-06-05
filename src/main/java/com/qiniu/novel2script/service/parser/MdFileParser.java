@@ -1,8 +1,6 @@
 package com.qiniu.novel2script.service.parser;
 
-import com.qiniu.novel2script.dto.ParseResult;
 import com.qiniu.novel2script.enums.FileType;
-import com.qiniu.novel2script.exception.FileParseException;
 import lombok.extern.slf4j.Slf4j;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
@@ -13,107 +11,90 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
+/**
+ * Markdown文件解析器
+ * 
+ * 负责解析Markdown文件（.md、.markdown），提取纯文本内容
+ * 
+ * 特点：
+ * - 使用CommonMark库解析Markdown语法
+ * - 将Markdown转换为纯文本（去除标题符号、列表符号等）
+ * - 默认使用UTF-8编码
+ */
 @Component
 @Slf4j
-public class MdFileParser implements FileParser {
+public class MdFileParser extends AbstractFileParser {
 
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
-
+    /** Markdown解析器（CommonMark库） */
     private final Parser markdownParser;
 
     public MdFileParser() {
+        // 初始化Markdown解析器
         this.markdownParser = Parser.builder().build();
     }
 
+    /**
+     * 返回支持的文件类型：MD
+     */
     @Override
     public FileType getSupportedType() {
         return FileType.MD;
     }
 
+    /**
+     * 提取Markdown文件的文本内容
+     * 
+     * 流程：
+     * 1. 读取Markdown源码
+     * 2. 使用CommonMark解析为AST（抽象语法树）
+     * 3. 将AST渲染为纯文本
+     * 
+     * @param path 文件路径
+     * @return 提取的纯文本内容
+     */
     @Override
-    public ParseResult parse(String filePath) throws FileParseException {
-        try {
-            Path path = Paths.get(filePath);
-            long fileSize = Files.size(path);
-
-            String markdownContent = Files.readString(path, StandardCharsets.UTF_8);
-
-            String plainText = parseMarkdownToText(markdownContent);
-
-            String cleanContent = cleanText(plainText);
-
-            return ParseResult.builder()
-                .rawText(markdownContent)
-                .cleanText(cleanContent)
-                .fileType(FileType.MD)
-                .fileSize(fileSize)
-                .encoding("UTF-8")
-                .charCount(cleanContent.length())
-                .lineCount(countLines(cleanContent))
-                .build();
-
-        } catch (IOException e) {
-            throw new FileParseException("MD文件解析失败: " + e.getMessage(), e);
-        }
+    protected String extractText(Path path) throws IOException {
+        // 读取Markdown源码（UTF-8编码）
+        String markdownContent = Files.readString(path, StandardCharsets.UTF_8);
+        
+        // 将Markdown转换为纯文本
+        return parseMarkdownToText(markdownContent);
     }
 
+    /**
+     * 验证是否为有效的Markdown文件
+     * 
+     * 检查逻辑：文件扩展名是否为.md或.markdown
+     * 
+     * @param path 文件路径
+     * @return 是否为Markdown文件
+     */
     @Override
-    public boolean isValid(String filePath) {
-        try {
-            Path path = Paths.get(filePath);
-
-            if (!Files.exists(path)) {
-                return false;
-            }
-
-            if (Files.size(path) > MAX_FILE_SIZE) {
-                return false;
-            }
-
-            String fileName = path.getFileName().toString().toLowerCase();
-            return fileName.endsWith(".md") || fileName.endsWith(".markdown");
-
-        } catch (IOException e) {
-            log.warn("文件验证异常: {}", filePath, e);
-            return false;
-        }
+    protected boolean isValidFileType(Path path) {
+        String fileName = path.getFileName().toString().toLowerCase();
+        return fileName.endsWith(".md") || fileName.endsWith(".markdown");
     }
 
+    /**
+     * 将Markdown源码转换为纯文本
+     * 
+     * 转换示例：
+     * - "# 标题" → "标题"
+     * - "**粗体**" → "粗体"
+     * - "- 列表项" → "列表项"
+     * 
+     * @param markdown Markdown源码
+     * @return 纯文本内容
+     */
     private String parseMarkdownToText(String markdown) {
+        // 解析Markdown为AST（抽象语法树）
         Node document = markdownParser.parse(markdown);
-
-        TextContentRenderer renderer = TextContentRenderer.builder()
-            .build();
-
+        
+        // 创建纯文本渲染器
+        TextContentRenderer renderer = TextContentRenderer.builder().build();
+        
+        // 将AST渲染为纯文本
         return renderer.render(document);
-    }
-
-    private String cleanText(String text) {
-        if (text == null) {
-            return "";
-        }
-
-        String cleaned = text.replace("\r\n", "\n");
-        cleaned = cleaned.replaceAll("\n{3,}", "\n\n");
-
-        String[] lines = cleaned.split("\n");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < lines.length; i++) {
-            sb.append(lines[i].trim());
-            if (i < lines.length - 1) {
-                sb.append("\n");
-            }
-        }
-
-        return sb.toString().trim();
-    }
-
-    private int countLines(String text) {
-        if (text == null || text.isEmpty()) {
-            return 0;
-        }
-        return text.split("\n").length;
     }
 }
