@@ -15,6 +15,12 @@ public class GlobalExceptionHandler {
         return Result.error(400, e.getMessage());
     }
 
+    @ExceptionHandler(FileParseException.class)
+    public Result<Void> handleFileParseException(FileParseException e) {
+        log.error("文件解析异常: {}", e.getMessage(), e);
+        return Result.error(400, e.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常: {}", e.getMessage(), e);
