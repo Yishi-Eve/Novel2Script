@@ -16,6 +16,7 @@ public class StorageProperties {
     private Path basePath = Paths.get("./uploads");
     private Path novelPath;
     private Path scriptPath;
+    private Path chapterPath;
 
     @PostConstruct
     public void init() {
@@ -24,6 +25,9 @@ public class StorageProperties {
         }
         if (scriptPath == null) {
             scriptPath = basePath.resolve("scripts");
+        }
+        if (chapterPath == null) {
+            chapterPath = basePath.resolve("chapters");
         }
     }
 }

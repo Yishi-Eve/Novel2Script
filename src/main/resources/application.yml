@@ -47,6 +47,7 @@ storage:
   base-path: ./uploads
   novel-path: ${storage.base-path}/novels
   script-path: ${storage.base-path}/scripts
+  chapter-path: ${storage.base-path}/chapters
 
 # 文本解析配置
 text-parser:

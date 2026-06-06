@@ -37,6 +37,9 @@ public class NovelUpload {
     @TableField("chapter_count")
     private Integer chapterCount;
 
+    @TableField("chapter_file_path")
+    private String chapterFilePath;
+
     @TableField("status")
     private NovelStatus status;
 

@@ -4,7 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,7 +20,7 @@ import java.nio.file.Path;
  * 
  * 检测优先级：
  * 1. BOM标记（最准确）
- * 2. UTF-8解码尝试
+ * 2. UTF-8解码尝试（严格模式）
  * 3. GBK解码尝试
  * 4. 默认UTF-8
  */
@@ -41,7 +45,7 @@ public class EncodingDetector {
             return bomEncoding;
         }
 
-        // 尝试UTF-8解码
+        // 尝试UTF-8解码（严格模式）
         if (isValidUTF8(bytes)) {
             return "UTF-8";
         }
@@ -91,17 +95,24 @@ public class EncodingDetector {
     /**
      * 验证是否为有效的UTF-8编码
      * 
-     * 通过尝试用UTF-8解码来验证
+     * 使用严格模式解码，如果遇到无效字节序列会报告错误
      * 
      * @param bytes 文件字节数组
      * @return 是否为有效的UTF-8编码
      */
     private boolean isValidUTF8(byte[] bytes) {
         try {
-            new String(bytes, StandardCharsets.UTF_8);
+            // 创建严格模式的UTF-8解码器
+            CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)    // 报告格式错误
+                .onUnmappableCharacter(CodingErrorAction.REPORT); // 报告无法映射的字符
+            
+            // 尝试解码
+            ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+            CharBuffer charBuffer = decoder.decode(byteBuffer);
             return true;  // 解码成功
         } catch (Exception e) {
-            return false;  // 解码失败
+            return false;  // 解码失败，不是有效的UTF-8
         }
     }
 
@@ -115,10 +126,17 @@ public class EncodingDetector {
      */
     private boolean isValidGBK(byte[] bytes) {
         try {
-            new String(bytes, Charset.forName("GBK"));
+            // 创建严格模式的GBK解码器
+            CharsetDecoder decoder = Charset.forName("GBK").newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)    // 报告格式错误
+                .onUnmappableCharacter(CodingErrorAction.REPORT); // 报告无法映射的字符
+            
+            // 尝试解码
+            ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+            CharBuffer charBuffer = decoder.decode(byteBuffer);
             return true;  // 解码成功
         } catch (Exception e) {
-            return false;  // 解码失败
+            return false;  // 解码失败，不是有效的GBK
         }
     }
 }
