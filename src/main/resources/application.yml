@@ -34,13 +34,18 @@ mybatis-plus:
   type-aliases-package: com.qiniu.novel2script.entity
   mapper-locations: classpath:mapper/*.xml
 
-# 百炼API配置
-bailian:
-  api-key: sk-5654309a2290464dadbf8c738aa91b16
-  base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-  model: qwen3.6-plus
-  max-tokens: 8192
-  temperature: 0.7
+# LangChain4j配置
+langchain4j:
+  community:
+    dashscope:
+      chat-model:
+        api-key: ${BaiLian_QiNiu_API_KEY}
+        model-name: qwen3.6-plus
+        max-tokens: 8192
+        temperature: 0.3
+        max-retries: 3
+        log-requests: true
+        log-responses: true
 
 # 文件存储配置
 storage:

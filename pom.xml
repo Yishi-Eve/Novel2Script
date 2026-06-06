@@ -95,6 +95,20 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+        <!-- LangChain4j DashScope集成 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-community-dashscope-spring-boot-starter</artifactId>
+            <version>1.15.0-beta25</version>
+        </dependency>
+
+        <!-- LangChain4j核心starter（支持AI Services） -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-spring-boot-starter</artifactId>
+            <version>1.15.0-beta25</version>
+        </dependency>
+
         <!-- 测试依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
