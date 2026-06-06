@@ -21,6 +21,12 @@ public class GlobalExceptionHandler {
         return Result.error(400, e.getMessage());
     }
 
+    @ExceptionHandler(ChapterSplitException.class)
+    public Result<Void> handleChapterSplitException(ChapterSplitException e) {
+        log.error("章节分割异常: {}", e.getMessage(), e);
+        return Result.error(400, e.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常: {}", e.getMessage(), e);
