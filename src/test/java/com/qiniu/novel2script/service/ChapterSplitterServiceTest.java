@@ -75,7 +75,7 @@ class ChapterSplitterServiceTest {
 
         assertNotNull(titles);
         assertTrue(titles.size() >= 5, "应检测到至少5个章节标题，实际: " + titles.size());
-        assertEquals("第一章 初入江湖", titles.get(0).getTitle());
+        assertEquals("第一章 初入江湖", titles.getFirst().getTitle());
     }
 
     @Test
@@ -125,7 +125,7 @@ class ChapterSplitterServiceTest {
 
         assertNotNull(titles);
         assertTrue(titles.size() >= 3, "应检测到至少3个章节标题，实际: " + titles.size());
-        assertTrue(titles.get(0).getTitle().contains("Chapter 1"));
+        assertTrue(titles.getFirst().getTitle().contains("Chapter 1"));
     }
 
     @Test
@@ -220,6 +220,6 @@ class ChapterSplitterServiceTest {
         assertNotNull(titles);
         assertTrue(titles.size() >= 5, "应检测到至少5个章节标题，实际: " + titles.size());
         // 验证目录被过滤，第一个标题应该是"第一章 初入江湖"而不是目录中的标题
-        assertEquals("第一章 初入江湖", titles.get(0).getTitle());
+        assertEquals("第一章 初入江湖", titles.getFirst().getTitle());
     }
 }

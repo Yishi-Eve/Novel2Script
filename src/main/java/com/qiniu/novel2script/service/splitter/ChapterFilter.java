@@ -33,10 +33,22 @@ public class ChapterFilter {
             Pattern.compile("第[零一二三四五六七八九十百千万\\d]+[章回节卷集部篇]");
 
     /**
+     * 中文第一章标题模式：第一章、第1章（精确匹配，不匹配第十一章）
+     */
+    private static final Pattern CHINESE_FIRST_CHAPTER_PATTERN = 
+            Pattern.compile("^第[一1][章回节卷集部篇]");
+
+    /**
      * 英文章节标题模式：Chapter X
      */
     private static final Pattern ENGLISH_CHAPTER_PATTERN = 
             Pattern.compile("Chapter\\s+\\d+", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * 英文第一章标题模式：Chapter 1、Chapter One
+     */
+    private static final Pattern ENGLISH_FIRST_CHAPTER_PATTERN = 
+            Pattern.compile("^Chapter\\s+(1|One)", Pattern.CASE_INSENSITIVE);
 
     /**
      * 过滤章节标题
@@ -105,6 +117,7 @@ public class ChapterFilter {
 
     /**
      * 判断是否是第一章的标题
+     * 使用精确匹配，避免"第十一章"被误判为"第一章"
      *
      * @param title 标题文本
      * @return 是否是第一章的标题
@@ -114,19 +127,14 @@ public class ChapterFilter {
             return false;
         }
 
-        // 中文：包含"第"和"一"和"章/回/节/卷/集/部/篇"
-        if (title.contains("第") && title.contains("一") && 
-            (title.contains("章") || title.contains("回") || title.contains("节") || 
-             title.contains("卷") || title.contains("集") || title.contains("部") || title.contains("篇"))) {
+        // 中文：精确匹配"第一章"或"第1章"，不匹配"第十一章"
+        if (CHINESE_FIRST_CHAPTER_PATTERN.matcher(title).find()) {
             return true;
         }
 
         // 英文：Chapter 1 或 Chapter One
-        if (ENGLISH_CHAPTER_PATTERN.matcher(title).find()) {
-            String lowerTitle = title.toLowerCase();
-            if (lowerTitle.contains("chapter 1") || lowerTitle.contains("chapter one")) {
-                return true;
-            }
+        if (ENGLISH_FIRST_CHAPTER_PATTERN.matcher(title).find()) {
+            return true;
         }
 
         return false;
