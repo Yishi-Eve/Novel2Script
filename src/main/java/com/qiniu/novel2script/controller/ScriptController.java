@@ -48,6 +48,7 @@ public class ScriptController {
     @GetMapping("/convert/{id}/status")
     public Result<ConvertStatus> getConvertStatus(@PathVariable Long id) {
         ConvertStatus status = scriptConvertService.getConvertStatus(id);
+        status.setLogMessages(scriptConvertService.getConvertLogs(id));
         return Result.success(status);
     }
 

@@ -20,13 +20,18 @@ import com.qiniu.novel2script.service.YamlGeneratorService;
 import com.qiniu.novel2script.vo.Result;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 /**
@@ -47,8 +52,18 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
     private final StorageProperties storageProperties;
     private final ScriptConvertProperties convertProperties;
 
+    @Lazy
+    @Autowired
+    private ScriptConvertService self;
+
     // 摘要缓存
     private final Map<Integer, ChapterSummary> summaryCache = new HashMap<>();
+
+    // 转换任务实时日志（convertId -> 日志队列）
+    private final Map<Long, ConcurrentLinkedQueue<String>> convertLogs = new ConcurrentHashMap<>();
+
+    private static final DateTimeFormatter LOG_TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final int MAX_LOG_SIZE = 200;
 
     @Override
     @Transactional
@@ -90,8 +105,8 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
                 .build();
         scriptOutputMapper.insert(scriptOutput);
 
-        // 5. 异步调用doConvert方法
-        doConvertAsync(scriptOutput.getId(), novelId, chapters);
+        // 5. 异步调用doConvert方法（通过代理调用以使@Async生效）
+        self.doConvertAsync(scriptOutput.getId(), novelId, chapters);
 
         // 6. 返回ConvertResult
         return ConvertResult.builder()
@@ -110,7 +125,7 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
 
         return ConvertStatus.builder()
                 .id(scriptOutput.getId())
-                .status(scriptOutput.getStatus().getDescription())
+                .status(scriptOutput.getStatus().name())
                 .progress(scriptOutput.getProgress())
                 .currentChapter(scriptOutput.getCurrentChapter())
                 .totalChapters(scriptOutput.getTotalChapters())
@@ -153,8 +168,8 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
         NovelUpload novel = novelUploadMapper.selectById(scriptOutput.getNovelId());
         List<Chapter> chapters = chapterSplitterService.loadChapters(novel.getChapterFilePath());
 
-        // 异步重新转换
-        doConvertAsync(convertId, scriptOutput.getNovelId(), chapters);
+        // 异步重新转换（通过代理调用以使@Async生效）
+        self.doConvertAsync(convertId, scriptOutput.getNovelId(), chapters);
 
         return ConvertResult.builder()
                 .convertId(convertId)
@@ -165,6 +180,8 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
 
     @Async("scriptConvertExecutor")
     public void doConvertAsync(Long convertId, Long novelId, List<Chapter> chapters) {
+        convertLogs.put(convertId, new ConcurrentLinkedQueue<>());
+        addLog(convertId, "转换任务开始执行");
         try {
             doConvert(convertId, novelId, chapters);
         } catch (Exception e) {
@@ -173,19 +190,27 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
             if (errorMessage != null && errorMessage.length() > 2000) {
                 errorMessage = errorMessage.substring(0, 2000);
             }
+            addLog(convertId, "转换失败：" + errorMessage);
             scriptOutputMapper.updateStatusWithError(convertId, ScriptStatus.FAILED, errorMessage);
         }
     }
 
     private void doConvert(Long convertId, Long novelId, List<Chapter> chapters) {
         log.info("开始执行转换任务，任务ID：{}，章节数：{}", convertId, chapters.size());
+        addLog(convertId, "共 " + chapters.size() + " 章，开始转换...");
 
         // 清理摘要缓存
         summaryCache.clear();
 
         // 1. 生成全书概览（10-20%）
+        addLog(convertId, "正在生成全书概览...");
         updateProgress(convertId, 10, 0);
         NovelOverview overview = generateOverviewWithFallback(novelId, chapters);
+        if (overview != null) {
+            addLog(convertId, "全书概览生成完成");
+        } else {
+            addLog(convertId, "全书概览生成失败，将使用简单模式");
+        }
         updateProgress(convertId, 20, 0);
 
         // 2. 逐章转换（20-90%）
@@ -197,6 +222,7 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
             ScriptOutput task = scriptOutputMapper.selectById(convertId);
             if (task.getStatus() == ScriptStatus.CANCELLED) {
                 log.info("转换任务已取消，任务ID：{}", convertId);
+                addLog(convertId, "转换已取消");
                 return;
             }
 
@@ -207,6 +233,7 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
 
             // 调用AI转换
             log.info("转换第{}章：{}", currentChapter.getChapterNumber(), currentChapter.getTitle());
+            addLog(convertId, "正在转换第 " + currentChapter.getChapterNumber() + " 章：" + currentChapter.getTitle());
             ChapterScript chapterScript = scriptConverter.convertChapter(
                     overviewStr,
                     contextStr,
@@ -215,6 +242,8 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
                     currentChapter.getContent()
             );
             chapterScripts.add(chapterScript);
+            addLog(convertId, "第 " + currentChapter.getChapterNumber() + " 章转换完成，"
+                    + (chapterScript.getScenes() != null ? chapterScript.getScenes().size() : 0) + " 个场景");
 
             // 更新进度
             int progress = 20 + (int) (((i + 1.0) / chapters.size()) * 70);
@@ -222,10 +251,12 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
         }
 
         // 3. 合并转换结果（90-95%）
+        addLog(convertId, "正在合并转换结果...");
         updateProgress(convertId, 90, chapters.size());
         Map<String, Object> scriptData = mergeChapterScripts(chapterScripts);
 
         // 4. 生成YAML文件（95-100%）
+        addLog(convertId, "正在生成YAML文件...");
         updateProgress(convertId, 95, chapters.size());
         Path yamlPath = storageProperties.getScriptPath().resolve("script_" + convertId + ".yaml");
         yamlGeneratorService.generateYaml(scriptData, yamlPath.toString());
@@ -241,6 +272,7 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
         scriptOutputMapper.updateById(scriptOutput);
 
         log.info("转换任务完成，任务ID：{}", convertId);
+        addLog(convertId, "转换完成！共 " + countTotalScenes(chapterScripts) + " 个场景");
     }
 
     private NovelOverview generateOverviewWithFallback(Long novelId, List<Chapter> chapters) {
@@ -406,5 +438,26 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
             case FAILED -> "转换失败：" + scriptOutput.getErrorMessage();
             case CANCELLED -> "已取消";
         };
+    }
+
+    private void addLog(Long convertId, String message) {
+        ConcurrentLinkedQueue<String> logs = convertLogs.get(convertId);
+        if (logs != null) {
+            String formatted = "[" + LocalDateTime.now().format(LOG_TIME_FMT) + "] " + message;
+            logs.offer(formatted);
+            // 限制日志数量，移除最早的
+            while (logs.size() > MAX_LOG_SIZE) {
+                logs.poll();
+            }
+        }
+    }
+
+    @Override
+    public List<String> getConvertLogs(Long convertId) {
+        ConcurrentLinkedQueue<String> logs = convertLogs.get(convertId);
+        if (logs == null) {
+            return Collections.emptyList();
+        }
+        return new ArrayList<>(logs);
     }
 }

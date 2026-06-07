@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * 转换状态DTO
  */
@@ -48,4 +50,9 @@ public class ConvertStatus {
      * 错误信息（如果有）
      */
     private String errorMessage;
+
+    /**
+     * 实时转换日志
+     */
+    private List<String> logMessages;
 }

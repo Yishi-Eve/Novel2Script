@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -44,7 +45,14 @@ public class YamlGeneratorServiceImpl implements YamlGeneratorService {
         options.setIndicatorIndent(1);
         options.setIndentWithIndicator(true);
 
-        Yaml yaml = new Yaml(options);
+        Representer representer = new Representer(options) {
+            @Override
+            protected org.yaml.snakeyaml.nodes.Tag getTag(Class<?> clazz, org.yaml.snakeyaml.nodes.Tag defaultTag) {
+                return org.yaml.snakeyaml.nodes.Tag.MAP;
+            }
+        };
+
+        Yaml yaml = new Yaml(representer, options);
         StringWriter writer = new StringWriter();
         yaml.dump(data, writer);
         return writer.toString();
