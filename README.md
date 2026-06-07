@@ -32,6 +32,140 @@
 
 ---
 
+## 项目依赖
+
+### 后端依赖（Maven）
+
+| 分类 | 依赖 | GroupId | ArtifactId | 版本 | 说明 |
+|------|------|---------|------------|------|------|
+| **Spring Boot** | Web框架 | org.springframework.boot | spring-boot-starter-web | 3.2.5 | Web应用开发 |
+| | 模板引擎 | org.springframework.boot | spring-boot-starter-thymeleaf | 3.2.5 | 服务端渲染 |
+| | 测试框架 | org.springframework.boot | spring-boot-starter-test | 3.2.5 | 单元测试 |
+| **数据库** | ORM框架 | com.baomidou | mybatis-plus-spring-boot3-starter | 3.5.5 | 数据库操作 |
+| | MySQL驱动 | com.mysql | mysql-connector-j | - | 数据库连接 |
+| **AI/LLM** | DashScope集成 | dev.langchain4j | langchain4j-community-dashscope-spring-boot-starter | 1.15.0-beta25 | 阿里云百炼平台 |
+| | LangChain4j核心 | dev.langchain4j | langchain4j-spring-boot-starter | 1.15.0-beta25 | AI服务框架 |
+| **文档解析** | Word解析 | org.apache.poi | poi-ooxml | 5.2.5 | .docx文件解析 |
+| | Markdown解析 | org.commonmark | commonmark | 0.22.0 | .md文件解析 |
+| **数据格式** | JSON处理 | com.fasterxml.jackson.core | jackson-databind | - | JSON序列化 |
+| | YAML生成 | com.fasterxml.jackson.dataformat | jackson-dataformat-yaml | - | YAML输出 |
+| | YAML解析 | org.yaml | snakeyaml | - | YAML处理 |
+| **网络** | HTTP客户端 | com.squareup.okhttp3 | okhttp | - | API调用 |
+| **工具** | 代码简化 | org.projectlombok | lombok | 1.18.30 | 注解生成 |
+
+### 前端依赖（CDN）
+
+| 依赖 | 版本 | 说明 | 引用地址 |
+|------|------|------|----------|
+| Bootstrap | 5.3.3 | UI框架 | css/js |
+| Bootstrap Icons | 1.11.3 | 图标库 | css |
+| js-yaml | 4.1.0 | YAML解析（结构预览） | js |
+
+---
+
+## 原创功能说明
+
+本项目在以下方面进行了原创设计和实现：
+
+### 1. 智能章节识别与分割
+
+**核心算法**：`service/splitter/` 模块
+
+- **多模式正则表达式匹配**：设计了支持中英文的章节标题识别算法
+  - 中文：`第X章`、`第X回`、`第X节`、`第X卷`、`第X篇` 等
+  - 英文：`Chapter X`、`Chapter One` 等
+  - 支持数字和中文数字混合
+
+- **目录区域自动检测**：识别并过滤小说目录中的重复标题
+  - 通过检测"第一章"标题的重复出现位置，自动跳过目录区域
+
+- **误匹配过滤机制**：
+  - 过滤过短标题（< 2字符）
+  - 过滤过长标题（> 50字符）
+  - 精确匹配第一章标题，避免"第十一章"被误判
+
+### 2. AI剧本转换流程
+
+**核心服务**：`service/impl/ScriptConvertServiceImpl.java`
+
+- **三阶段转换策略**：
+  1. **全书概览生成**：先分析整本小说，提取角色表、情节线、写作风格
+  2. **逐章剧本转换**：基于概览信息，逐章调用AI生成剧本
+  3. **结果合并输出**：将各章剧本合并为完整的YAML文件
+
+- **滑动窗口摘要机制**：
+  - 保留前N章的摘要作为上下文
+  - 确保剧情连贯性，避免角色和情节断裂
+  - 可配置窗口大小（默认3章）
+
+- **结构化输出保障**：
+  - 使用LangChain4j的AI Services强制JSON输出
+  - 定义明确的DTO结构（ChapterScript、Character、Scene）
+  - 解析失败时自动重试
+
+### 3. 全书概览系统
+
+**核心服务**：`service/impl/NovelOverviewServiceImpl.java`
+
+- **概览内容**：
+  - 角色表：角色名称、描述、性格、关系
+  - 情节线：主线、支线、冲突、高潮
+  - 地点表：场景地点及其意义
+  - 写作风格：叙事风格、基调、节奏
+
+- **概览应用**：
+  - 作为AI转换的上下文输入
+  - 确保全书角色一致性
+  - 保持情节连贯性
+
+### 4. 标准YAML输出
+
+**核心服务**：`service/impl/YamlGeneratorServiceImpl.java`
+
+- **使用Jackson YAML**：替代SnakeYAML，生成干净的标准YAML
+- **无类型标签**：输出的YAML不含Java类型标签（如`!!map`）
+- **格式规范**：
+  - 使用2空格缩进
+  - 数组使用块状格式
+  - 最小化引号使用
+
+### 5. 实时进度管理
+
+**核心实现**：前端轮询 + 后端状态更新
+
+- **进度追踪**：
+  - 前端每2秒轮询后端接口
+  - 后端实时更新转换进度百分比
+  - 显示当前处理章节/总章节数
+
+- **任务管理**：
+  - 支持取消正在进行的转换
+  - 支持重试失败的任务
+  - 防止重复提交（并发控制）
+
+### 6. 文件解析器架构
+
+**核心模块**：`service/parser/` 模块
+
+- **策略模式设计**：
+  - `FileParser` 接口定义统一规范
+  - `AbstractFileParser` 提供公共实现
+  - `TxtFileParser`、`MdFileParser`、`DocxFileParser` 各自实现
+
+- **编码检测**：
+  - 自动检测TXT文件编码（UTF-8、GBK等）
+  - 使用`EncodingDetector`工具类
+
+### 7. 异步任务架构
+
+**配置**：`config/AsyncConfig.java`
+
+- **Spring异步支持**：使用`@Async`注解实现后台转换
+- **线程池配置**：独立的线程池处理转换任务
+- **事务管理**：确保数据一致性
+
+---
+
 ## 快速开始
 
 ### 1. 环境要求
