@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('上传小说')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h2 class="mb-4"><i class="bi bi-cloud-upload me-2"></i>上传小说文件</h2>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div id="dropZone" class="drop-zone rounded-3 p-5 text-center border-2 border-dashed">
+                        <i class="bi bi-file-earmark-arrow-up display-1 text-primary"></i>
+                        <h4 class="mt-3">拖拽文件到此处上传</h4>
+                        <p class="text-muted">或点击选择文件</p>
+                        <p class="small text-muted">支持格式：TXT、Markdown (.md)、Word (.docx) | 最大 10MB</p>
+                        <input type="file" id="fileInput" class="d-none" accept=".txt,.md,.docx">
+                        <button class="btn btn-outline-primary mt-2" onclick="document.getElementById('fileInput').click()">
+                            <i class="bi bi-folder2-open me-2"></i>选择文件
+                        </button>
+                    </div>
+
+                    <div id="uploadProgress" class="mt-4 d-none">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span id="fileName" class="fw-bold"></span>
+                            <span id="uploadPercent" class="text-primary">0%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="uploadResult" class="mt-4 d-none">
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle me-2"></i>
+                            <strong>上传成功！</strong>
+                            <span id="resultMessage"></span>
+                        </div>
+                        <div id="novelInfo" class="card bg-light mt-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">文件名</small>
+                                        <div id="infoFileName" class="fw-bold"></div>
+                                    </div>
+                                    <div class="col-3">
+                                        <small class="text-muted">类型</small>
+                                        <div id="infoFileType" class="fw-bold"></div>
+                                    </div>
+                                    <div class="col-3">
+                                        <small class="text-muted">大小</small>
+                                        <div id="infoFileSize" class="fw-bold"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 mt-3">
+                            <button id="convertBtn" class="btn btn-primary btn-lg" onclick="startConvert()">
+                                <i class="bi bi-magic me-2"></i>开始AI转换
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="resetUpload()">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i>重新上传
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="uploadError" class="mt-4 d-none">
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <span id="errorMessage"></span>
+                        </div>
+                        <button class="btn btn-outline-secondary" onclick="resetUpload()">重试</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+let currentNovelId = null;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-primary', 'bg-light');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('border-primary', 'bg-light');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-primary', 'bg-light');
+    if (e.dataTransfer.files.length > 0) {
+        uploadFile(e.dataTransfer.files[0]);
+    }
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        uploadFile(fileInput.files[0]);
+    }
+});
+
+function uploadFile(file) {
+    const allowedTypes = ['.txt', '.md', '.docx'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes.includes(ext)) {
+        showError('不支持的文件格式，请上传 TXT、Markdown 或 Word 文件');
+        return;
+    }
+    if (file.name.length > 200) {
+        showError('文件名过长，请缩短文件名后再试');
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        showError('文件大小超过 10MB 限制');
+        return;
+    }
+
+    document.getElementById('dropZone').classList.add('d-none');
+    document.getElementById('uploadProgress').classList.remove('d-none');
+    document.getElementById('fileName').textContent = file.name;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/novel/upload');
+
+    xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('uploadPercent').textContent = percent + '%';
+        }
+    });
+
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            const result = JSON.parse(xhr.responseText);
+            if (result.code === 200) {
+                showResult(result.data);
+            } else {
+                showError(result.message || '上传失败');
+            }
+        } else {
+            showError('上传失败，服务器错误');
+        }
+    };
+
+    xhr.onerror = function() {
+        showError('网络错误，请检查连接');
+    };
+
+    xhr.send(formData);
+}
+
+function showResult(data) {
+    currentNovelId = data.id;
+    document.getElementById('uploadProgress').classList.add('d-none');
+    document.getElementById('uploadResult').classList.remove('d-none');
+    document.getElementById('resultMessage').textContent = `文件已成功上传并解析`;
+    document.getElementById('infoFileName').textContent = data.originalFilename;
+    document.getElementById('infoFileType').textContent = data.fileType.toUpperCase();
+    document.getElementById('infoFileSize').textContent = data.fileSizeFormatted;
+}
+
+function showError(message) {
+    document.getElementById('dropZone').classList.add('d-none');
+    document.getElementById('uploadProgress').classList.add('d-none');
+    document.getElementById('uploadError').classList.remove('d-none');
+    document.getElementById('errorMessage').textContent = message;
+}
+
+function startConvert() {
+    if (!currentNovelId) return;
+
+    const btn = document.getElementById('convertBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>正在启动转换...';
+
+    fetch(`/api/convert/${currentNovelId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(result => {
+            if (result.code === 200) {
+                window.location.href = `/script?novelId=${currentNovelId}`;
+            } else {
+                alert('启动转换失败: ' + result.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-magic me-2"></i>开始AI转换';
+            }
+        })
+        .catch(() => {
+            alert('网络错误');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-magic me-2"></i>开始AI转换';
+        });
+}
+
+function resetUpload() {
+    currentNovelId = null;
+    document.getElementById('dropZone').classList.remove('d-none');
+    document.getElementById('uploadProgress').classList.add('d-none');
+    document.getElementById('uploadResult').classList.add('d-none');
+    document.getElementById('uploadError').classList.add('d-none');
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('uploadPercent').textContent = '0%';
+    fileInput.value = '';
+}
+</script>
+</body>
+</html>

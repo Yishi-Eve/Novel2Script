@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.qiniu.novel2script.mapper.ScriptOutputMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.qiniu.novel2script.entity.ScriptOutput">
+        <id column="id" property="id"/>
+        <result column="novel_id" property="novelId"/>
+        <result column="title" property="title"/>
+        <result column="original_author" property="originalAuthor"/>
+        <result column="genre" property="genre"/>
+        <result column="yaml_file_path" property="yamlFilePath"/>
+        <result column="status" property="status" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <result column="progress" property="progress"/>
+        <result column="current_chapter" property="currentChapter"/>
+        <result column="total_chapters" property="totalChapters"/>
+        <result column="total_scenes" property="totalScenes"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="overview_file_path" property="overviewFilePath"/>
+        <result column="created_time" property="createdTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 根据小说ID和状态查询剧本 -->
+    <select id="selectByNovelIdAndStatus" resultMap="BaseResultMap">
+        SELECT * FROM script_output WHERE novel_id = #{novelId} AND status = #{status} LIMIT 1
+    </select>
+
+</mapper>

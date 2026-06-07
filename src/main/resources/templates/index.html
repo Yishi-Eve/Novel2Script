@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('首页')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <h1 class="display-4 fw-bold mb-3">AI小说转剧本工具</h1>
+            <p class="lead text-muted mb-4">将您的小说自动转换为专业剧本，支持 txt、md、docx 格式</p>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                <a href="/upload" class="btn btn-primary btn-lg px-4">
+                    <i class="bi bi-upload me-2"></i>开始转换
+                </a>
+                <a href="/history" class="btn btn-outline-secondary btn-lg px-4">
+                    <i class="bi bi-clock-history me-2"></i>历史记录
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5 g-4">
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon bg-primary bg-gradient text-white rounded-circle mb-3">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <h5 class="card-title">多格式支持</h5>
+                    <p class="card-text text-muted">支持 TXT、Markdown、Word 三种常见小说格式，自动识别文件编码</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon bg-success bg-gradient text-white rounded-circle mb-3">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <h5 class="card-title">AI智能转换</h5>
+                    <p class="card-text text-muted">基于通义千问大模型，自动生成符合行业标准的结构化剧本</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon bg-warning bg-gradient text-white rounded-circle mb-3">
+                        <i class="bi bi-download"></i>
+                    </div>
+                    <h5 class="card-title">YAML导出</h5>
+                    <p class="card-text text-muted">输出标准 YAML 格式剧本，可直接阅读、编辑和二次加工</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="mb-4">最近转换</h3>
+            <div id="recentList" class="list-group">
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm me-2"></div>加载中...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadRecentNovels();
+});
+
+function loadRecentNovels() {
+    fetch('/api/novels?page=0&size=5')
+        .then(res => res.json())
+        .then(result => {
+            const container = document.getElementById('recentList');
+            if (result.code === 200 && result.data.content.length > 0) {
+                container.innerHTML = result.data.content.map(novel => `
+                    <a href="/script?novelId=${novel.id}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-file-earmark me-2"></i>
+                            <strong>${novel.originalFilename}</strong>
+                            <small class="text-muted ms-2">${novel.fileType.toUpperCase()} · ${novel.fileSizeFormatted}</small>
+                        </div>
+                        <span class="badge ${getStatusBadgeClass(novel.status)} rounded-pill">${novel.status}</span>
+                    </a>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="text-center py-4 text-muted">暂无转换记录</div>';
+            }
+        })
+        .catch(() => {
+            document.getElementById('recentList').innerHTML = '<div class="text-center py-4 text-danger">加载失败</div>';
+        });
+}
+
+function getStatusBadgeClass(status) {
+    if (status.includes('已上传') || status.includes('已解析')) return 'bg-primary';
+    if (status.includes('转换中')) return 'bg-warning text-dark';
+    if (status.includes('已完成')) return 'bg-success';
+    if (status.includes('失败')) return 'bg-danger';
+    return 'bg-secondary';
+}
+</script>
+</body>
+</html>

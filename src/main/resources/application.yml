@@ -1,0 +1,68 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: novel-to-script
+  
+  datasource:
+    url: jdbc:mysql://localhost:3306/novel2script?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
+
+# MyBatis Plus配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+  type-aliases-package: com.qiniu.novel2script.entity
+  mapper-locations: classpath:mapper/*.xml
+
+# LangChain4j配置
+langchain4j:
+  community:
+    dashscope:
+      chat-model:
+        api-key: ${BaiLian_QiNiu_API_KEY}
+        model-name: qwen3.6-plus
+        max-tokens: 32768
+        temperature: 0.7
+        max-retries: 3
+        log-requests: true
+        log-responses: true
+        parameters:
+          response-format: JSON
+
+# 剧本转换配置
+script-convert:
+  summary-window-size: 3
+
+# 文件存储配置
+storage:
+  base-path: ./uploads
+  novel-path: ${storage.base-path}/novels
+  script-path: ${storage.base-path}/scripts
+  chapter-path: ${storage.base-path}/chapters
+  overview-path: ${storage.base-path}/overviews
+
+# 日志配置
+logging:
+  level:
+    com.qiniu.novel2script: DEBUG
+    org.springframework.web: INFO
