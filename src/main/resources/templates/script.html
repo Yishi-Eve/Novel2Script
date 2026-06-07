@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('剧本预览')}"></head>
+<body>
+<style>
+    .convert-log {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        padding: 16px;
+        max-height: 300px;
+        overflow-y: auto;
+        border-radius: 0 0 0.375rem 0.375rem;
+    }
+    .convert-log .log-entry {
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    .convert-log .log-time {
+        color: #6a9955;
+    }
+    .convert-log .log-msg {
+        color: #d4d4d4;
+    }
+</style>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div id="loadingState" class="text-center py-5">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+                <p class="mt-3 text-muted">加载中...</p>
+            </div>
+
+            <div id="convertPanel" class="d-none">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-file-earmark-play me-2"></i>剧本转换</h2>
+                    <a href="/history" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>返回列表
+                    </a>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold" id="convertFileName"></span>
+                            <span id="convertStatus" class="badge"></span>
+                        </div>
+                        <div class="progress mb-3" style="height: 10px;">
+                            <div id="convertProgress" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small">
+                            <span id="convertChapter">准备中...</span>
+                            <span id="convertPercent">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="convertActions" class="d-none mb-4">
+                    <button id="cancelBtn" class="btn btn-outline-danger me-2" onclick="cancelConvert()">
+                        <i class="bi bi-x-circle me-1"></i>取消转换
+                    </button>
+                    <button id="retryBtn" class="btn btn-outline-warning d-none" onclick="retryConvert()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>重试
+                    </button>
+                </div>
+
+                <div id="convertError" class="alert alert-danger d-none">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <span id="convertErrorMessage"></span>
+                </div>
+
+                <div id="convertLogPanel" class="card border-0 shadow-sm d-none">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <span class="fw-bold"><i class="bi bi-terminal me-2"></i>转换日志</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleLogPanel()">
+                            <i id="logToggleIcon" class="bi bi-chevron-up"></i>
+                        </button>
+                    </div>
+                    <div id="logPanelBody" class="card-body p-0">
+                        <div id="convertLog" class="convert-log"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="scriptPanel" class="d-none">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-file-earmark-play me-2"></i>剧本预览</h2>
+                    <div>
+                        <button class="btn btn-primary me-2" onclick="downloadScript()">
+                            <i class="bi bi-download me-1"></i>下载YAML
+                        </button>
+                        <a href="/history" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>返回列表
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <ul class="nav nav-tabs card-header-tabs" id="scriptTabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-bs-toggle="tab" href="#yamlContent">YAML源码</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#previewContent">结构预览</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="yamlContent">
+                                <pre class="bg-light p-3 rounded" style="max-height: 600px; overflow-y: auto;"><code id="yamlCode"></code></pre>
+                            </div>
+                            <div class="tab-pane fade" id="previewContent">
+                                <div id="scriptPreview"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<script>
+let novelId = null;
+let convertId = null;
+let pollTimer = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    novelId = params.get('novelId');
+    if (!novelId) {
+        alert('缺少小说ID参数');
+        window.location.href = '/history';
+        return;
+    }
+    loadNovelInfo();
+});
+
+function loadNovelInfo() {
+    fetch(`/api/novel/${novelId}`)
+        .then(res => res.json())
+        .then(result => {
+            if (result.code === 200) {
+                document.getElementById('convertFileName').textContent = result.data.originalFilename;
+                checkScriptStatus();
+            } else {
+                alert('加载失败');
+                window.location.href = '/history';
+            }
+        });
+}
+
+function checkScriptStatus() {
+    fetch(`/api/script/novel/${novelId}`)
+        .then(res => res.json())
+        .then(result => {
+            document.getElementById('loadingState').classList.add('d-none');
+            if (result.code === 200 && result.data) {
+                convertId = result.data.id;
+                const status = result.data.status;
+                if (status === 'COMPLETED') {
+                    loadScriptContent();
+                } else if (status === 'CONVERTING') {
+                    showConvertPanel();
+                    startPolling();
+                } else if (status === 'FAILED') {
+                    showConvertPanel();
+                    showConvertError(result.data.errorMessage || '转换失败');
+                } else {
+                    showConvertPanel();
+                    updateConvertStatus(result.data);
+                }
+            } else {
+                showConvertPanel();
+                document.getElementById('convertStatus').textContent = '未开始';
+                document.getElementById('convertStatus').className = 'badge bg-secondary';
+            }
+        });
+}
+
+function showConvertPanel() {
+    document.getElementById('convertPanel').classList.remove('d-none');
+    document.getElementById('convertActions').classList.remove('d-none');
+    document.getElementById('convertLogPanel').classList.remove('d-none');
+}
+
+function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(pollConvertStatus, 2000);
+}
+
+function stopPolling() {
+    if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+}
+
+function pollConvertStatus() {
+    if (!convertId) return;
+    fetch(`/api/convert/${convertId}/status`)
+        .then(res => res.json())
+        .then(result => {
+            if (result.code === 200) {
+                updateConvertStatus(result.data);
+                if (result.data.logMessages) {
+                    renderLogs(result.data.logMessages);
+                }
+                if (result.data.status === 'COMPLETED') {
+                    stopPolling();
+                    loadScriptContent();
+                } else if (result.data.status === 'FAILED') {
+                    stopPolling();
+                    showConvertError(result.data.errorMessage || '转换失败');
+                } else if (result.data.status === 'CANCELLED') {
+                    stopPolling();
+                    showConvertError('转换已取消');
+                }
+            }
+        });
+}
+
+function updateConvertStatus(data) {
+    const progressBar = document.getElementById('convertProgress');
+    const statusBadge = document.getElementById('convertStatus');
+    progressBar.style.width = (data.progress || 0) + '%';
+    document.getElementById('convertPercent').textContent = (data.progress || 0) + '%';
+    document.getElementById('convertChapter').textContent =
+        data.currentChapter && data.totalChapters ?
+        `正在处理第 ${data.currentChapter}/${data.totalChapters} 章` : '准备中...';
+
+    if (data.status === 'CONVERTING') {
+        statusBadge.textContent = '转换中';
+        statusBadge.className = 'badge bg-warning text-dark';
+        document.getElementById('cancelBtn').classList.remove('d-none');
+        document.getElementById('retryBtn').classList.add('d-none');
+    } else if (data.status === 'COMPLETED') {
+        statusBadge.textContent = '已完成';
+        statusBadge.className = 'badge bg-success';
+    } else if (data.status === 'FAILED') {
+        statusBadge.textContent = '失败';
+        statusBadge.className = 'badge bg-danger';
+    }
+}
+
+function showConvertError(message) {
+    document.getElementById('convertError').classList.remove('d-none');
+    document.getElementById('convertErrorMessage').textContent = message;
+    document.getElementById('convertStatus').textContent = '失败';
+    document.getElementById('convertStatus').className = 'badge bg-danger';
+    document.getElementById('cancelBtn').classList.add('d-none');
+    document.getElementById('retryBtn').classList.remove('d-none');
+}
+
+function cancelConvert() {
+    if (!convertId) return;
+    if (!confirm('确定要取消转换吗？')) return;
+    fetch(`/api/convert/${convertId}/cancel`, { method: 'POST' })
+        .then(res => res.json())
+        .then(result => {
+            if (result.code === 200) {
+                stopPolling();
+                document.getElementById('convertStatus').textContent = '已取消';
+                document.getElementById('convertStatus').className = 'badge bg-secondary';
+                document.getElementById('cancelBtn').classList.add('d-none');
+                document.getElementById('retryBtn').classList.remove('d-none');
+            }
+        });
+}
+
+function retryConvert() {
+    if (!convertId) return;
+    document.getElementById('convertError').classList.add('d-none');
+    document.getElementById('convertStatus').textContent = '重试中';
+    document.getElementById('convertStatus').className = 'badge bg-warning text-dark';
+    document.getElementById('retryBtn').classList.add('d-none');
+    document.getElementById('cancelBtn').classList.remove('d-none');
+    document.getElementById('convertProgress').style.width = '0%';
+    document.getElementById('convertPercent').textContent = '0%';
+
+    fetch(`/api/convert/${convertId}/retry`, { method: 'POST' })
+        .then(res => res.json())
+        .then(result => {
+            if (result.code === 200) {
+                convertId = result.data.convertId;
+                startPolling();
+            } else {
+                showConvertError(result.message || '重试失败');
+            }
+        });
+}
+
+function loadScriptContent() {
+    fetch(`/api/script/novel/${novelId}`)
+        .then(res => res.json())
+        .then(result => {
+            if (result.code === 200 && result.data && result.data.yamlContent) {
+                document.getElementById('convertPanel').classList.add('d-none');
+                document.getElementById('scriptPanel').classList.remove('d-none');
+                document.getElementById('yamlCode').textContent = result.data.yamlContent;
+                renderPreview(result.data.yamlContent);
+            }
+        });
+}
+
+function renderPreview(yamlText) {
+    const preview = document.getElementById('scriptPreview');
+    try {
+        const data = jsyaml.load(yamlText);
+        if (!data || !data.script) {
+            preview.innerHTML = '<div class="alert alert-warning">YAML 结构无效</div>';
+            return;
+        }
+        const script = data.script;
+        let html = '<div class="script-preview">';
+
+        // 元数据
+        if (script.metadata) {
+            const m = script.metadata;
+            html += `<div class="mb-4">`;
+            if (m.title) html += `<h3>${m.title}</h3>`;
+            if (m.original_author) html += `<p class="text-muted">原作：${m.original_author}</p>`;
+            if (m.genre) html += `<span class="badge bg-info me-2">${m.genre}</span>`;
+            if (m.total_episodes) html += `<span class="badge bg-secondary me-2">共 ${m.total_episodes} 幕</span>`;
+            if (m.total_scenes) html += `<span class="badge bg-secondary">共 ${m.total_scenes} 场景</span>`;
+            html += `</div>`;
+        }
+
+        // 角色表
+        if (script.characters && script.characters.length > 0) {
+            html += `<h4 class="mt-4 mb-3"><i class="bi bi-people me-2"></i>角色表</h4>`;
+            html += `<div class="row g-3 mb-4">`;
+            script.characters.forEach(char => {
+                html += `<div class="col-md-4 col-sm-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-title text-primary">${char.name || '未知'}</h6>
+                            ${char.description ? `<p class="card-text small text-muted mb-1">${char.description}</p>` : ''}
+                            ${char.gender ? `<span class="badge bg-light text-dark me-1">${char.gender}</span>` : ''}
+                            ${char.age ? `<span class="badge bg-light text-dark">${char.age}</span>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+
+        // 剧本内容
+        if (script.episodes && script.episodes.length > 0) {
+            html += `<h4 class="mt-4 mb-3"><i class="bi bi-collection me-2"></i>剧本内容</h4>`;
+            script.episodes.forEach(episode => {
+                html += `<div class="card mb-3 border-0 shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <strong>第 ${episode.episode_number || ''} 幕：${episode.title || '未命名'}</strong>
+                    </div>
+                    <div class="card-body p-0">`;
+                if (episode.scenes && episode.scenes.length > 0) {
+                    episode.scenes.forEach(scene => {
+                        html += `<div class="border-bottom p-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="badge bg-dark">场景 ${scene.scene_number || ''}</span>
+                            </div>
+                            ${scene.scene_header ? `<h6 class="text-secondary mb-2">${scene.scene_header}</h6>` : ''}
+                            ${scene.content ? `<div class="scene-content">${formatContent(scene.content)}</div>` : ''}
+                        </div>`;
+                    });
+                } else {
+                    html += `<div class="p-3 text-muted">无场景内容</div>`;
+                }
+                html += `</div></div>`;
+            });
+        }
+
+        html += '</div>';
+        preview.innerHTML = html;
+    } catch (e) {
+        preview.innerHTML = `<div class="alert alert-danger">YAML 解析失败: ${e.message}</div>`;
+    }
+}
+
+function formatContent(content) {
+    if (!content) return '';
+    // 将换行符转换为 <br>，并保留段落结构
+    return content
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => `<p class="mb-2">${line}</p>`)
+        .join('');
+}
+
+function downloadScript() {
+    window.open(`/api/script/novel/${novelId}/download`, '_blank');
+}
+
+function renderLogs(logs) {
+    const container = document.getElementById('convertLog');
+    if (!logs || logs.length === 0) return;
+    container.innerHTML = logs.map(entry => {
+        const match = entry.match(/^\[(.+?)\]\s*(.*)$/);
+        if (match) {
+            return `<div class="log-entry"><span class="log-time">[${match[1]}]</span> <span class="log-msg">${escapeHtml(match[2])}</span></div>`;
+        }
+        return `<div class="log-entry"><span class="log-msg">${escapeHtml(entry)}</span></div>`;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+let logCollapsed = false;
+function toggleLogPanel() {
+    logCollapsed = !logCollapsed;
+    const body = document.getElementById('logPanelBody');
+    const icon = document.getElementById('logToggleIcon');
+    if (logCollapsed) {
+        body.classList.add('d-none');
+        icon.className = 'bi bi-chevron-down';
+    } else {
+        body.classList.remove('d-none');
+        icon.className = 'bi bi-chevron-up';
+    }
+}
+</script>
+</body>
+</html>
