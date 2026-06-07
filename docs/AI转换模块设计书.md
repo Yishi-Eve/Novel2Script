@@ -23,9 +23,9 @@ AI转换模块（ScriptConvertService）是Novel2Script系统的核心业务模�
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| LangChain4j | 1.16.1-beta26 | AI应用开发框架 |
-| langchain4j-community-dashscope | 1.16.1-beta26 | 阿里云百炼集成 |
-| langchain4j-spring-boot-starter | 1.16.1-beta26 | Spring Boot自动配置 |
+| LangChain4j | 1.15.0-beta25 | AI应用开发框架 |
+| langchain4j-community-dashscope | 1.15.0-beta25 | 阿里云百炼集成 |
+| langchain4j-spring-boot-starter | 1.15.0-beta25 | Spring Boot自动配置 |
 | qwen3.6-plus | - | 阿里云百炼大模型，支持1M上下文窗口 |
 
 ### 1.4 依赖关系
@@ -1396,14 +1396,14 @@ GlobalExceptionHandler 新增处理：
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-dashscope-spring-boot-starter</artifactId>
-    <version>1.16.1-beta26</version>
+    <version>1.15.0-beta25</version>
 </dependency>
 
 <!-- LangChain4j核心starter（支持AI Services） -->
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.16.1-beta26</version>
+    <version>1.15.0-beta25</version>
 </dependency>
 ```
 

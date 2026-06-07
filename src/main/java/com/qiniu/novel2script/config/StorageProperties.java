@@ -17,6 +17,7 @@ public class StorageProperties {
     private Path novelPath;
     private Path scriptPath;
     private Path chapterPath;
+    private Path overviewPath;
 
     @PostConstruct
     public void init() {
@@ -28,6 +29,9 @@ public class StorageProperties {
         }
         if (chapterPath == null) {
             chapterPath = basePath.resolve("chapters");
+        }
+        if (overviewPath == null) {
+            overviewPath = basePath.resolve("overviews");
         }
     }
 }

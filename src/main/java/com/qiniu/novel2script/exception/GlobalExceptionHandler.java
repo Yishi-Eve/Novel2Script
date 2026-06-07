@@ -27,6 +27,12 @@ public class GlobalExceptionHandler {
         return Result.error(400, e.getMessage());
     }
 
+    @ExceptionHandler(ScriptConvertException.class)
+    public Result<Void> handleScriptConvertException(ScriptConvertException e) {
+        log.error("剧本转换异常: {}", e.getMessage(), e);
+        return Result.error(400, e.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常: {}", e.getMessage(), e);
