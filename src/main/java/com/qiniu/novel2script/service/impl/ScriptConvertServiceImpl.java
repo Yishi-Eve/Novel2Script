@@ -169,7 +169,11 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
             doConvert(convertId, novelId, chapters);
         } catch (Exception e) {
             log.error("转换任务执行失败，任务ID：{}", convertId, e);
-            scriptOutputMapper.updateStatusWithError(convertId, ScriptStatus.FAILED, e.getMessage());
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.length() > 2000) {
+                errorMessage = errorMessage.substring(0, 2000);
+            }
+            scriptOutputMapper.updateStatusWithError(convertId, ScriptStatus.FAILED, errorMessage);
         }
     }
 

@@ -10,7 +10,7 @@
         <result column="original_author" property="originalAuthor"/>
         <result column="genre" property="genre"/>
         <result column="yaml_file_path" property="yamlFilePath"/>
-        <result column="status" property="status" typeHandler="com.baomidou.mybatisplus.core.handlers.EnumTypeHandler"/>
+        <result column="status" property="status" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
         <result column="progress" property="progress"/>
         <result column="current_chapter" property="currentChapter"/>
         <result column="total_chapters" property="totalChapters"/>

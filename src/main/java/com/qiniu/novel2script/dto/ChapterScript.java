@@ -1,5 +1,6 @@
 package com.qiniu.novel2script.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.model.output.structured.Description;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,7 @@ import java.util.List;
 @Description("章节剧本信息")
 public class ChapterScript {
 
+    @JsonProperty("episode_title")
     @Description("幕标题，简短概括本章内容")
     private String episodeTitle;
 

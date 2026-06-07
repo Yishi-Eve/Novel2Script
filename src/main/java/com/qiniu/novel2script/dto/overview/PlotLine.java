@@ -1,5 +1,6 @@
 package com.qiniu.novel2script.dto.overview;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.model.output.structured.Description;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
