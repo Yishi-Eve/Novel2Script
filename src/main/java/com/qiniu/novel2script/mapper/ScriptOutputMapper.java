@@ -5,6 +5,7 @@ import com.qiniu.novel2script.entity.ScriptOutput;
 import com.qiniu.novel2script.enums.ScriptStatus;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /**
@@ -17,6 +18,12 @@ public interface ScriptOutputMapper extends BaseMapper<ScriptOutput> {
      * 根据小说ID和状态查询剧本
      */
     ScriptOutput selectByNovelIdAndStatus(@Param("novelId") Long novelId, @Param("status") ScriptStatus status);
+
+    /**
+     * 根据小说ID查询最新的剧本
+     */
+    @Select("SELECT * FROM script_output WHERE novel_id = #{novelId} ORDER BY created_time DESC LIMIT 1")
+    ScriptOutput selectByNovelId(@Param("novelId") Long novelId);
 
     /**
      * 更新转换进度
