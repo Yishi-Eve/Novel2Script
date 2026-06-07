@@ -59,6 +59,7 @@ async:
 # 剧本转换配置
 script-convert:
   window-size: 3
+  summary-window-size: 3
   overview-max-tokens: 10000
   summary-max-tokens: 2000
   max-retries: 3
