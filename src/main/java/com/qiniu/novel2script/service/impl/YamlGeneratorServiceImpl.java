@@ -1,11 +1,12 @@
 package com.qiniu.novel2script.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.qiniu.novel2script.service.YamlGeneratorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -15,11 +16,23 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * YAML生成服务实现
+ * YAML生成服务实现 - 使用Jackson YAML
  */
 @Slf4j
 @Service
 public class YamlGeneratorServiceImpl implements YamlGeneratorService {
+
+    private final ObjectMapper yamlMapper;
+
+    public YamlGeneratorServiceImpl() {
+        YAMLFactory factory = YAMLFactory.builder()
+                .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
+                .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
+                .enable(YAMLGenerator.Feature.INDENT_ARRAYS)
+                .build();
+        this.yamlMapper = new ObjectMapper(factory);
+        this.yamlMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
 
     @Override
     public String generateYaml(Object data, String filePath) {
@@ -38,23 +51,13 @@ public class YamlGeneratorServiceImpl implements YamlGeneratorService {
 
     @Override
     public String toYamlString(Object data) {
-        DumperOptions options = new DumperOptions();
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        options.setPrettyFlow(true);
-        options.setIndent(2);
-        options.setIndicatorIndent(1);
-        options.setIndentWithIndicator(true);
-
-        Representer representer = new Representer(options) {
-            @Override
-            protected org.yaml.snakeyaml.nodes.Tag getTag(Class<?> clazz, org.yaml.snakeyaml.nodes.Tag defaultTag) {
-                return org.yaml.snakeyaml.nodes.Tag.MAP;
-            }
-        };
-
-        Yaml yaml = new Yaml(representer, options);
-        StringWriter writer = new StringWriter();
-        yaml.dump(data, writer);
-        return writer.toString();
+        try {
+            StringWriter writer = new StringWriter();
+            yamlMapper.writeValue(writer, data);
+            return writer.toString();
+        } catch (IOException e) {
+            log.error("YAML序列化失败", e);
+            throw new RuntimeException("YAML序列化失败", e);
+        }
     }
 }
