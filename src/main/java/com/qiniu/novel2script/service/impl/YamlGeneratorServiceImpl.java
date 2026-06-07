@@ -1,8 +1,6 @@
 package com.qiniu.novel2script.service.impl;
 
-import com.qiniu.novel2script.config.StorageProperties;
 import com.qiniu.novel2script.service.YamlGeneratorService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
@@ -20,10 +18,7 @@ import java.nio.file.Paths;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class YamlGeneratorServiceImpl implements YamlGeneratorService {
-
-    private final StorageProperties storageProperties;
 
     @Override
     public String generateYaml(Object data, String filePath) {

@@ -14,11 +14,6 @@ import org.apache.ibatis.annotations.Update;
 public interface ScriptOutputMapper extends BaseMapper<ScriptOutput> {
 
     /**
-     * 根据小说ID查询剧本
-     */
-    ScriptOutput selectByNovelId(@Param("novelId") Long novelId);
-
-    /**
      * 根据小说ID和状态查询剧本
      */
     ScriptOutput selectByNovelIdAndStatus(@Param("novelId") Long novelId, @Param("status") ScriptStatus status);
@@ -40,22 +35,4 @@ public interface ScriptOutputMapper extends BaseMapper<ScriptOutput> {
      */
     @Update("UPDATE script_output SET status = #{status}, error_message = #{errorMessage}, update_time = NOW() WHERE id = #{id}")
     int updateStatusWithError(@Param("id") Long id, @Param("status") ScriptStatus status, @Param("errorMessage") String errorMessage);
-
-    /**
-     * 更新YAML文件路径
-     */
-    @Update("UPDATE script_output SET yaml_file_path = #{yamlFilePath}, update_time = NOW() WHERE id = #{id}")
-    int updateYamlFilePath(@Param("id") Long id, @Param("yamlFilePath") String yamlFilePath);
-
-    /**
-     * 更新全书概览文件路径
-     */
-    @Update("UPDATE script_output SET overview_file_path = #{overviewFilePath}, update_time = NOW() WHERE id = #{id}")
-    int updateOverviewFilePath(@Param("id") Long id, @Param("overviewFilePath") String overviewFilePath);
-
-    /**
-     * 更新统计信息
-     */
-    @Update("UPDATE script_output SET total_chapters = #{totalChapters}, total_scenes = #{totalScenes}, update_time = NOW() WHERE id = #{id}")
-    int updateStatistics(@Param("id") Long id, @Param("totalChapters") Integer totalChapters, @Param("totalScenes") Integer totalScenes);
 }

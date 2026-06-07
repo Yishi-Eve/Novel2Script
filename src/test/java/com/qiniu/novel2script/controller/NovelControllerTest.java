@@ -1,6 +1,5 @@
 package com.qiniu.novel2script.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qiniu.novel2script.entity.NovelUpload;
 import com.qiniu.novel2script.enums.NovelStatus;
 import com.qiniu.novel2script.service.FileStorageService;
@@ -26,9 +25,6 @@ class NovelControllerTest {
 
     @MockBean
     private FileStorageService fileStorageService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Test
     void testUploadNovel() throws Exception {
