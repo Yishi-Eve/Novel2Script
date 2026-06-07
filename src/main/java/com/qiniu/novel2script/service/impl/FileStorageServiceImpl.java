@@ -3,11 +3,16 @@ package com.qiniu.novel2script.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.qiniu.novel2script.config.StorageProperties;
+import com.qiniu.novel2script.dto.ChapterSplitResult;
+import com.qiniu.novel2script.dto.ParseResult;
 import com.qiniu.novel2script.entity.NovelUpload;
+import com.qiniu.novel2script.enums.FileType;
 import com.qiniu.novel2script.enums.NovelStatus;
 import com.qiniu.novel2script.exception.FileStorageException;
 import com.qiniu.novel2script.mapper.NovelUploadMapper;
+import com.qiniu.novel2script.service.ChapterSplitterService;
 import com.qiniu.novel2script.service.FileStorageService;
+import com.qiniu.novel2script.service.TextParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +35,8 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     private final NovelUploadMapper novelUploadMapper;
     private final StorageProperties storageProperties;
+    private final TextParserService textParserService;
+    private final ChapterSplitterService chapterSplitterService;
 
     private static final Set<String> SUPPORTED_TYPES = Set.of("txt", "md", "docx");
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -65,6 +72,28 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             novelUploadMapper.insert(novelUpload);
             log.info("文件元数据保存成功: id={}", novelUpload.getId());
+
+            // 解析文件并分割章节
+            try {
+                FileType fileType = FileType.fromExtension(extension);
+                ParseResult parseResult = textParserService.parse(absolutePath.toString(), fileType);
+                
+                ChapterSplitResult splitResult = chapterSplitterService.splitChapters(
+                    novelUpload.getId(), parseResult.getCleanText());
+                
+                novelUpload.setChapterCount(splitResult.getChapterCount());
+                novelUpload.setChapterFilePath(splitResult.getChapterFilePath());
+                novelUpload.setStatus(NovelStatus.PARSED);
+                novelUpload.setUpdateTime(LocalDateTime.now());
+                novelUploadMapper.updateById(novelUpload);
+                
+                log.info("文件解析成功，章节数: {}", splitResult.getChapterCount());
+            } catch (Exception e) {
+                log.error("文件解析失败", e);
+                novelUpload.setStatus(NovelStatus.ERROR);
+                novelUpload.setUpdateTime(LocalDateTime.now());
+                novelUploadMapper.updateById(novelUpload);
+            }
 
             return novelUpload;
 
