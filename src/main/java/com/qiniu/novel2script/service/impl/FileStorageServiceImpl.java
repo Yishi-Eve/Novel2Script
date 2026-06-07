@@ -162,6 +162,10 @@ public class FileStorageServiceImpl implements FileStorageService {
             throw new FileStorageException("文件名不能为空");
         }
 
+        if (originalFilename.length() > 200) {
+            throw new FileStorageException("文件名过长，请缩短文件名后再试");
+        }
+
         String extension = getFileExtension(originalFilename);
         if (!SUPPORTED_TYPES.contains(extension.toLowerCase())) {
             throw new FileStorageException("不支持的文件类型: " + extension + "，仅支持: " + SUPPORTED_TYPES);

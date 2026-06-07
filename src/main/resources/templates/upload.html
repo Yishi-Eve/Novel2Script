@@ -118,6 +118,10 @@ function uploadFile(file) {
         showError('不支持的文件格式，请上传 TXT、Markdown 或 Word 文件');
         return;
     }
+    if (file.name.length > 200) {
+        showError('文件名过长，请缩短文件名后再试');
+        return;
+    }
     if (file.size > 10 * 1024 * 1024) {
         showError('文件大小超过 10MB 限制');
         return;
