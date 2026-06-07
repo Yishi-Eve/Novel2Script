@@ -364,6 +364,7 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
 
     private Map<String, Object> mergeChapterScripts(List<ChapterScript> chapterScripts) {
         Map<String, Object> scriptData = new LinkedHashMap<>();
+        Map<String, Object> script = new LinkedHashMap<>();
 
         // 元数据
         Map<String, Object> metadata = new LinkedHashMap<>();
@@ -372,9 +373,9 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
         metadata.put("total_scenes", countTotalScenes(chapterScripts));
         metadata.put("created_at", LocalDateTime.now().toString());
         metadata.put("version", "1.0");
-        scriptData.put("script", Map.of("metadata", metadata));
+        script.put("metadata", metadata);
 
-        // 合并角色表
+        // 合并角色表 - 转换为Map列表避免Java对象标签
         Map<String, com.qiniu.novel2script.dto.Character> allCharacters = new LinkedHashMap<>();
         for (ChapterScript cs : chapterScripts) {
             if (cs.getCharacters() != null) {
@@ -383,7 +384,14 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
                 }
             }
         }
-        scriptData.put("script", mergeIntoMap(scriptData.get("script"), "characters", new ArrayList<>(allCharacters.values())));
+        List<Map<String, String>> characterList = new ArrayList<>();
+        for (com.qiniu.novel2script.dto.Character c : allCharacters.values()) {
+            Map<String, String> charMap = new LinkedHashMap<>();
+            charMap.put("name", c.getName());
+            charMap.put("description", c.getDescription());
+            characterList.add(charMap);
+        }
+        script.put("characters", characterList);
 
         // 合并场景
         List<Map<String, Object>> episodes = new ArrayList<>();
@@ -407,16 +415,10 @@ public class ScriptConvertServiceImpl implements ScriptConvertService {
             episode.put("scenes", scenes);
             episodes.add(episode);
         }
-        scriptData.put("script", mergeIntoMap(scriptData.get("script"), "episodes", episodes));
+        script.put("episodes", episodes);
 
+        scriptData.put("script", script);
         return scriptData;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> mergeIntoMap(Object mapObj, String key, Object value) {
-        Map<String, Object> map = new LinkedHashMap<>((Map<String, Object>) mapObj);
-        map.put(key, value);
-        return map;
     }
 
     private int countTotalScenes(List<ChapterScript> chapterScripts) {

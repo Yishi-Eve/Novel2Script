@@ -90,9 +90,14 @@ public class FileStorageServiceImpl implements FileStorageService {
                 log.info("文件解析成功，章节数: {}", splitResult.getChapterCount());
             } catch (Exception e) {
                 log.error("文件解析失败", e);
-                novelUpload.setStatus(NovelStatus.ERROR);
-                novelUpload.setUpdateTime(LocalDateTime.now());
-                novelUploadMapper.updateById(novelUpload);
+                // 清理已存储的文件和数据库记录
+                try {
+                    Files.deleteIfExists(absolutePath);
+                } catch (IOException ioException) {
+                    log.warn("清理文件失败: {}", absolutePath, ioException);
+                }
+                novelUploadMapper.deleteById(novelUpload.getId());
+                throw e;
             }
 
             return novelUpload;
