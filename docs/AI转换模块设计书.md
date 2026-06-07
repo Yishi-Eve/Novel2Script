@@ -542,9 +542,6 @@ public class Character {
     @Description("角色名称")
     private String name;
     
-    @Description("角色类型：男主/女主/男二/女二/重要配角/次要配角/龙套/群众/画外音/旁白")
-    private String roleType;
-    
     @Description("角色简短描述")
     private String description;
 }
@@ -578,9 +575,6 @@ public class NovelOverview {
 public class CharacterInfo {
     @Description("角色名称")
     private String name;
-    
-    @Description("角色类型")
-    private String roleType;
     
     @Description("角色描述")
     private String description;
@@ -802,8 +796,7 @@ com.qiniu.novel2script
 │   ├── NovelUploadMapper              # 小说Mapper（已有）
 │   └── ScriptOutputMapper             # 剧本Mapper（新增）
 ├── enums/
-│   ├── ScriptStatus                   # 剧本状态枚举（新增）
-│   └── RoleType                       # 角色类型枚举（新增）
+│   └── ScriptStatus                   # 剧本状态枚举（新增）
 └── exception/
     └── ScriptConvertException         # 转换异常（新增）
 ```
@@ -1089,20 +1082,6 @@ public class ScriptConvertProperties {
 - COMPLETED：转换完成
 - FAILED：转换失败
 - CANCELLED：已取消
-
-#### RoleType（角色类型枚举）
-
-枚举值：
-- MALE_LEAD：男主
-- FEMALE_LEAD：女主
-- MALE_SUPPORTING：男二
-- FEMALE_SUPPORTING：女二
-- IMPORTANT_SUPPORTING：重要配角
-- MINOR_SUPPORTING：次要配角
-- EXTRA：龙套
-- CROWD：群众
-- VOICE_OVER：画外音
-- NARRATOR：旁白
 
 #### ScriptConvertException（转换异常）
 
@@ -1469,7 +1448,6 @@ script-convert:
   "characters": [
     {
       "name": "角色名称",
-      "role_type": "角色类型（男主/女主/男二/女二/重要配角/次要配角/龙套/群众/画外音/旁白）",
       "description": "角色简短描述"
     }
   ],
@@ -1551,7 +1529,6 @@ script-convert:
   "characters": [
     {
       "name": "角色名称",
-      "role_type": "角色类型（男主/女主/男二/女二/重要配角/次要配角/龙套/群众/画外音/旁白）",
       "description": "角色描述",
       "personality": "性格特点",
       "relationships": "与其他角色关系"

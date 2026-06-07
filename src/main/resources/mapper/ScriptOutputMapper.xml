@@ -21,11 +21,6 @@
         <result column="update_time" property="updateTime"/>
     </resultMap>
 
-    <!-- 根据小说ID查询剧本 -->
-    <select id="selectByNovelId" resultMap="BaseResultMap">
-        SELECT * FROM script_output WHERE novel_id = #{novelId} ORDER BY created_time DESC LIMIT 1
-    </select>
-
     <!-- 根据小说ID和状态查询剧本 -->
     <select id="selectByNovelIdAndStatus" resultMap="BaseResultMap">
         SELECT * FROM script_output WHERE novel_id = #{novelId} AND status = #{status} LIMIT 1

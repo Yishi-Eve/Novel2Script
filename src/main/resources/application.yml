@@ -49,21 +49,9 @@ langchain4j:
         parameters:
           response-format: JSON
 
-# 异步配置
-async:
-  core-pool-size: 5
-  max-pool-size: 10
-  queue-capacity: 100
-  thread-name-prefix: script-convert-
-
 # 剧本转换配置
 script-convert:
-  window-size: 3
   summary-window-size: 3
-  overview-max-tokens: 10000
-  summary-max-tokens: 2000
-  max-retries: 3
-  timeout-seconds: 60
 
 # 文件存储配置
 storage:
@@ -71,19 +59,7 @@ storage:
   novel-path: ${storage.base-path}/novels
   script-path: ${storage.base-path}/scripts
   chapter-path: ${storage.base-path}/chapters
-
-# 文本解析配置
-text-parser:
-  max-file-size: 10485760
-  supported-types:
-    - txt
-    - md
-    - docx
-  default-encoding: UTF-8
-  clean:
-    remove-extra-blank-lines: true
-    max-consecutive-blank-lines: 2
-    trim-lines: true
+  overview-path: ${storage.base-path}/overviews
 
 # 日志配置
 logging:

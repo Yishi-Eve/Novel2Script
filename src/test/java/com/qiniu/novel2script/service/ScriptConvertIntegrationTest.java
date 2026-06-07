@@ -2,7 +2,6 @@ package com.qiniu.novel2script.service;
 
 import com.qiniu.novel2script.dto.*;
 import com.qiniu.novel2script.entity.NovelUpload;
-import com.qiniu.novel2script.enums.FileType;
 import com.qiniu.novel2script.enums.NovelStatus;
 import com.qiniu.novel2script.exception.ScriptConvertException;
 import com.qiniu.novel2script.mapper.NovelUploadMapper;
@@ -11,14 +10,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataAccessException;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
